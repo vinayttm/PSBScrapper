@@ -68,19 +68,26 @@ class RecorderService : AccessibilityService() {
                 appNotOpenCounter++
             } else {
                 checkForSessionExpiry()
-                switchToMpIn()
-                enterPin()
-                myAccounts()
-                arrowDown()
-                accountBalance()
-                scrollToGetMore()
-                var res = filterList()
-                readTransaction()
                 au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
+                apiManager.checkUpiStatus { isActive ->
+                    if (isActive) {
+                        switchToMpIn()
+                        enterPin()
+                        myAccounts()
+                        arrowDown()
+                        accountBalance()
+                        readTransaction()
+                    } else {
+                        closeAndOpenApp()
+                    }
+                }
             }
             rootNode.recycle()
         }
     }
+
+
+
 
     private fun switchToMpIn() {
         val mainList = au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
@@ -95,7 +102,7 @@ class RecorderService : AccessibilityService() {
 
     private fun enterPin() {
         if (isLogin) return
-        val loginPin = "888898"
+        val loginPin = Config.loginPin
         if (loginPin.isNotEmpty()) {
             val enterMPIN =
                 au.findNodeByText(
@@ -123,13 +130,13 @@ class RecorderService : AccessibilityService() {
                                     val x = json["x"].toString().toInt()
                                     val y = json["y"].toString().toInt()
                                     try {
-                                        Thread.sleep(5000)
+                                        Thread.sleep(2000)
                                     } catch (e: InterruptedException) {
                                         e.printStackTrace()
                                     }
                                     println("Clicked on X : $x PIN $pinValue")
                                     println("Clicked on Y : $y PIN $pinValue")
-                                    performTap(x.toFloat(), y.toFloat(), 950)
+                                    performTap(x.toFloat(), y.toFloat(), 650)
                                     ticker.startReAgain();
                                 }
                             }
@@ -272,11 +279,8 @@ class RecorderService : AccessibilityService() {
                 if (output.length() > 0) {
                     val result = JSONObject()
                     try {
-//                            result.put("Result", aes.encrypt(output.toString()))
-//                            apiManager.saveBankTransaction(result.toString());
-//                            performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
-//                            Thread.sleep(5000)
-                        scrollCounter = 0
+                            result.put("Result", aes.encrypt(output.toString()))
+                            apiManager.saveBankTransaction(result.toString());
                         val homeIcon =
                             au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
                         homeIcon?.apply {
@@ -313,7 +317,6 @@ class RecorderService : AccessibilityService() {
     private fun formatDate(inputDateString: String): String {
         val inputFormat = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
         val outputFormat = SimpleDateFormat("d/M/yyyy", Locale.ENGLISH)
-
         val date = inputFormat.parse(inputDateString)
         return outputFormat.format(date!!)
     }
@@ -354,6 +357,14 @@ class RecorderService : AccessibilityService() {
                 au.findNodeByText(rootInActiveWindow, "Yes", false, false)
             yesButton?.apply {
                 performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                val intent = packageManager.getLaunchIntentForPackage(packageName.toString())
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    isLogin = false;
+                } else {
+                    Log.e("AccessibilityService", "App not found: " + packageName.toString())
+                }
             }
         }
 
@@ -366,19 +377,47 @@ class RecorderService : AccessibilityService() {
                 performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
+       val allText = au.listAllTextsInActiveWindow(rootInActiveWindow)
+        if(allText.contains("My Accounts"))
+        {
+            if(allText.contains("Record not found"))
+            {
+                val homeIcon =
+                    au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
+                homeIcon?.apply {
+                    performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                }
+            }
+
+        }
+
+
+
         if (node3 != null) {
             val extendMySession =
                 au.findNodeByText(rootInActiveWindow, "OK", false, false)
             extendMySession?.apply {
-                performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                closeAndOpenApp()
-                val intent = packageManager.getLaunchIntentForPackage(packageName.toString())
-                if (intent != null) {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                } else {
-                    Log.e("AccessibilityService", "App not found: " + packageName.toString())
+                val enterMPIN =
+                    au.findNodeByText(
+                        au.getTopMostParentNode(rootInActiveWindow),
+                        "Enter MPIN",
+                        false,
+                        false
+                    )
+                enterMPIN?.apply {
+                    closeAndOpenApp()
+                    isLogin = false
                 }
+                performAction(AccessibilityNodeInfo.ACTION_CLICK)
+
+
+//                val intent = packageManager.getLaunchIntentForPackage(packageName.toString())
+//                if (intent != null) {
+//                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                    startActivity(intent)
+//                } else {
+//                    Log.e("AccessibilityService", "App not found: " + packageName.toString())
+//                }
             }
         }
 
@@ -387,8 +426,6 @@ class RecorderService : AccessibilityService() {
 
     private fun closeAndOpenApp() {
         performGlobalAction(GLOBAL_ACTION_BACK)
-        isLogin = false
-
     }
 
 
