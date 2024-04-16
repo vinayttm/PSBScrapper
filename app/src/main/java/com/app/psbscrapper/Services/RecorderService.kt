@@ -73,9 +73,9 @@ class RecorderService : AccessibilityService() {
                 myAccounts()
                 arrowDown()
                 accountBalance()
-                // scrollToGetMore()
+                scrollToGetMore()
                 var res = filterList()
-                //readTransaction()
+                readTransaction()
                 au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
             }
             rootNode.recycle()
@@ -186,7 +186,7 @@ class RecorderService : AccessibilityService() {
     private var scrollCounter = 0
     private fun scrollToGetMore() {
         if (au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
-                .contains("Account Details")
+                .contains("Delink Account")
         ) {
             val scrollLayout =
                 au.findNodeByClassName(rootInActiveWindow, "android.widget.ListView")
@@ -214,76 +214,80 @@ class RecorderService : AccessibilityService() {
         val mutableList = mutableListOf<String>()
         if (mainList.contains("Delink Account")) {
             val unfilteredList = mainList.filter { it.isNotEmpty() }
-            val aNoIndex = unfilteredList.indexOf(" Download")
+            val aNoIndex = unfilteredList.indexOf("Delink Account")
             if (aNoIndex != -1 && aNoIndex < unfilteredList.size - 2) {
                 val separatedList =
                     unfilteredList.subList(aNoIndex, unfilteredList.size).toMutableList()
-                val modifiedList = separatedList.subList(2, separatedList.size - 2)
-                modifiedList.removeAt(0)
+                val modifiedList = separatedList.subList(5, separatedList.size)
                 println("modifiedList $modifiedList")
                 mutableList.addAll(modifiedList)
             }
         }
         return mutableList
 
-        return mutableList
     }
 
     private fun readTransaction() {
         val output = JSONArray()
         val mainList = au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
         try {
-            if (mainList.contains("Mini Statement")) {
-                if (mainList.contains("Download")) {
-                    val filterList = filterList();
-                    println("filterList = $filterList")
-                    //    val totalBalance = filterList[0];
-                    //         filterList.removeAt(0);
-//                    for (i in filterList.indices step 7) {
-//                        val day = filterList[0 + i]
-//                        val month = filterList[1 + i]
-//                        val year = filterList[2 + i]
-//                        val date = "$day $month $year"
-//                        val unFilterAmount = filterList[4 + i]
-//                        var amount = ""
-//                        val description = filterList[6 + i];
-//                        if (unFilterAmount.contains("Cr")) {
-//                            amount = unFilterAmount.replace("Cr", "").replace("Rs.", "").trim();
-//                        }
-//                        if (unFilterAmount.contains("Dr")) {
-//                            amount =
-//                                "-${unFilterAmount.replace("Dr", "").replace("Rs.", "").trim()}"
-//                        }
-//                        val entry = JSONObject()
-//                        try {
-//                            entry.put("Amount", amount.replace(",", ""))
-//                            entry.put("RefNumber", extractUTRFromDesc(description))
-//                            entry.put("Description", extractUTRFromDesc(description))
-//                            entry.put("AccountBalance", totalBalance.replace(",", ""))
-//                            entry.put("CreatedDate", formatDate(date))
-//                            entry.put("BankName", Config.bankName + Config.bankLoginId)
-//                            entry.put("BankLoginId", Config.bankLoginId)
-//                            entry.put("UPIId", getUPIId(description))
-//                            output.put(entry)
-//                        } catch (e: JSONException) {
-//                            throw java.lang.RuntimeException(e)
-//                        }
-//
-//                    }
-                    Log.d("Final Json Output", output.toString());
-                    Log.d("Total length", output.length().toString());
-//                    if (output.length() > 0) {
-//                        val result = JSONObject()
-//                        try {
+            var balance = ""
+            for (i in 0..mainList.size) {
+                if (mainList[i].contains("Account Balance")) {
+                    balance = mainList[i - 2].replace("₹","")
+                    break
+                }
+            }
+            if (mainList.contains("Delink Account")) {
+                val filterList = filterList();
+                for (i in filterList.indices step 3) {
+                    val date = filterList[i]
+                    val description = filterList[i + 1]
+                    val crOrDrAmount = filterList[i + 2]
+                    var amount = ""
+                    if (crOrDrAmount.contains("CR")) {
+                        amount = crOrDrAmount.replace("CR", "").replace("₹", "").trim();
+                    }
+                    if (crOrDrAmount.contains("DR")) {
+                        amount =
+                            "-${crOrDrAmount.replace("DR", "").replace("₹", "").trim()}"
+                    }
+                    val entry = JSONObject()
+                    try {
+                        entry.put("Amount", amount.replace(",", ""))
+                        entry.put("RefNumber", extractUTRFromDesc(description))
+                        entry.put("Description", extractUTRFromDesc(description))
+                        entry.put("AccountBalance", balance)
+                        entry.put("CreatedDate", date)
+                        entry.put("BankName", Config.bankName + Config.bankLoginId)
+                        entry.put("BankLoginId", Config.bankLoginId)
+                        entry.put("UPIId", getUPIId(description))
+                        output.put(entry)
+                    } catch (e: JSONException) {
+                        throw java.lang.RuntimeException(e)
+                    }
+                }
+                Log.d("Final Json Output", output.toString());
+                Log.d("Total length", output.length().toString());
+                if (output.length() > 0) {
+                    val result = JSONObject()
+                    try {
 //                            result.put("Result", aes.encrypt(output.toString()))
 //                            apiManager.saveBankTransaction(result.toString());
 //                            performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
 //                            Thread.sleep(5000)
-//                        } catch (e: JSONException) {
-//                            throw java.lang.RuntimeException(e)
-//                        }
-//                    }
+                        scrollCounter = 0
+                        val homeIcon =
+                            au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
+                        homeIcon?.apply {
+                            performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        }
+
+                    } catch (e: JSONException) {
+                        throw java.lang.RuntimeException(e)
+                    }
                 }
+
 
             }
         } catch (ignored: Exception) {
@@ -332,21 +336,27 @@ class RecorderService : AccessibilityService() {
                 false
             )
 
+        val node3 = au.findNodeByText(
+            rootInActiveWindow,
+            "There is some difficulty in processing the request. Please try again later.",
+            false,
+            false
+        )
+        val node4 = au.findNodeByText(
+            rootInActiveWindow,
+            "Do You Want to Logout?",
+            false,
+            false
+        )
 
-//
-//        if (au.listAllTextsInActiveWindow(rootInActiveWindow)
-//                .contains("Your session has been timed-out.")
-//        ) {
-//
-//            val okButton = au.findNodeByClassName(rootInActiveWindow, "android.widget.Button")
-//            okButton?.apply {
-//                isLogin = false;
-//                isEnteringToStatement = false;
-//                performAction(AccessibilityNodeInfo.ACTION_CLICK);
-//                ticker.startReAgain();
-//
-//            }
-//        }
+        if (node4 != null) {
+            val yesButton =
+                au.findNodeByText(rootInActiveWindow, "Yes", false, false)
+            yesButton?.apply {
+                performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+        }
+
 
         if (node1 != null || node2 != null) {
             val extendMySession =
@@ -356,7 +366,28 @@ class RecorderService : AccessibilityService() {
                 performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
+        if (node3 != null) {
+            val extendMySession =
+                au.findNodeByText(rootInActiveWindow, "OK", false, false)
+            extendMySession?.apply {
+                performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                closeAndOpenApp()
+                val intent = packageManager.getLaunchIntentForPackage(packageName.toString())
+                if (intent != null) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                } else {
+                    Log.e("AccessibilityService", "App not found: " + packageName.toString())
+                }
+            }
+        }
 
+
+    }
+
+    private fun closeAndOpenApp() {
+        performGlobalAction(GLOBAL_ACTION_BACK)
+        isLogin = false
 
     }
 
