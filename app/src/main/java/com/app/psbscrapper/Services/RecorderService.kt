@@ -54,8 +54,9 @@ class RecorderService : AccessibilityService() {
         val rootNode: AccessibilityNodeInfo? = au.getTopMostParentNode(rootInActiveWindow)
         if (rootNode != null) {
             if (au.findNodeByPackageName(rootNode, Config.packageName) == null) {
-                if (appNotOpenCounter > 4) {
+                if (appNotOpenCounter > 2) {
                     Log.d("App Status", "Not Found")
+                    isLogin = false
                     relaunchApp()
                     try {
                         Thread.sleep(4000)
@@ -81,12 +82,18 @@ class RecorderService : AccessibilityService() {
                         closeAndOpenApp()
                     }
                 }
+//                checkForSessionExpiry()
+//                au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
+//                switchToMpIn()
+//                enterPin()
+//                myAccounts()
+//                arrowDown()
+//                accountBalance()
+//                readTransaction()
             }
             rootNode.recycle()
         }
     }
-
-
 
 
     private fun switchToMpIn() {
@@ -130,13 +137,13 @@ class RecorderService : AccessibilityService() {
                                     val x = json["x"].toString().toInt()
                                     val y = json["y"].toString().toInt()
                                     try {
-                                        Thread.sleep(2000)
+                                        Thread.sleep(5000)
                                     } catch (e: InterruptedException) {
                                         e.printStackTrace()
                                     }
                                     println("Clicked on X : $x PIN $pinValue")
                                     println("Clicked on Y : $y PIN $pinValue")
-                                    performTap(x.toFloat(), y.toFloat(), 650)
+                                    performTap(x.toFloat(), y.toFloat(), 750)
                                     ticker.startReAgain();
                                 }
                             }
@@ -237,11 +244,18 @@ class RecorderService : AccessibilityService() {
     private fun readTransaction() {
         val output = JSONArray()
         val mainList = au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
+        if (mainList.contains("Record not found")) {
+            val homeIcon =
+                au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
+            homeIcon?.apply {
+                performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+        }
         try {
             var balance = ""
             for (i in 0..mainList.size) {
                 if (mainList[i].contains("Account Balance")) {
-                    balance = mainList[i - 2].replace("₹","")
+                    balance = mainList[i - 2].replace("₹", "")
                     break
                 }
             }
@@ -291,8 +305,6 @@ class RecorderService : AccessibilityService() {
                         throw java.lang.RuntimeException(e)
                     }
                 }
-
-
             }
         } catch (ignored: Exception) {
         }
@@ -323,6 +335,15 @@ class RecorderService : AccessibilityService() {
 
 
     private fun checkForSessionExpiry() {
+        val mainList = au.listAllTextsInActiveWindow(au.getTopMostParentNode(rootInActiveWindow))
+        if(mainList.contains("My Operative Accounts (00)"))
+        {
+            val homeIcon =
+                au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
+            homeIcon?.apply {
+                performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+        }
 
         val node1 =
             au.findNodeByText(
@@ -351,6 +372,7 @@ class RecorderService : AccessibilityService() {
             false,
             false
         )
+        val node5  = au.findNodeByText(rootInActiveWindow,"There is some difficulty in processing the request. Please try again later (No Response)",false,false)
 
         if (node4 != null) {
             val yesButton =
@@ -377,22 +399,6 @@ class RecorderService : AccessibilityService() {
                 performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
         }
-       val allText = au.listAllTextsInActiveWindow(rootInActiveWindow)
-        if(allText.contains("My Accounts"))
-        {
-            if(allText.contains("Record not found"))
-            {
-                val homeIcon =
-                    au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
-                homeIcon?.apply {
-                    performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                }
-            }
-
-        }
-
-
-
         if (node3 != null) {
             val extendMySession =
                 au.findNodeByText(rootInActiveWindow, "OK", false, false)
@@ -409,16 +415,17 @@ class RecorderService : AccessibilityService() {
                     isLogin = false
                 }
                 performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                val homeIcon =
+                    au.findNodeByText(rootInActiveWindow, "home-icon", false, false)
+                homeIcon?.apply {
+                    performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                }
 
-
-//                val intent = packageManager.getLaunchIntentForPackage(packageName.toString())
-//                if (intent != null) {
-//                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-//                    startActivity(intent)
-//                } else {
-//                    Log.e("AccessibilityService", "App not found: " + packageName.toString())
-//                }
             }
+        }
+        node5?.apply {
+            performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            closeAndOpenApp()
         }
 
 
